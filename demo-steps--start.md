@@ -39,7 +39,72 @@ _As team lead I want to start a new project_
     1. Visit https://github.com/settings/tokens/new
     2. Enter a descriptive name and click everything under _repo_, click generate.
     3. Copy and paste the token somewhere
-    4. `pipelines github-connect --application-id=ac7762b9-1620-44c1-b290-492d89a3fd7e DevExRoadshow/filenes 4d3a1f609444107cb698c7c69db951e471ebc8f3`
+    4. `pipelines github-connect --application-id=ac7762b9-1620-44c1-b290-492d89a3fd7e DevExRoadshow/filenes GITHUB_PERSONAL_ACCESS_TOKEN`
+1. Tell pipelines what to do when a commit is made or a PR is filed.  
+   _Instructions are stored in an acquia-pipelines.yml file. Cut and paste the
+   following:_
+   
+    ```
+    version: 1.0.0
+    services:
+      - mysql
+    
+    variables:
+      global:
+        COMPOSER_BIN: $BUILD_DIR/vendor/bin
+        BLT_DIR: $BUILD_DIR/vendor/acquia/blt
+    
+    events:
+      build:
+        steps:
+            # Install global packages and set global configuration.
+            - setup:
+                type: script
+                script:
+                  - set -x
+                  - composer self-update
+                  - composer validate --no-check-all --ansi
+                  - composer install
+                  - source ${BLT_DIR}/scripts/pipelines/setup_environment
+                  - source ${BLT_DIR}/scripts/pipelines/setup_project
+                  - composer install-phantomjs
+    
+            # Install Lightning and setup behat config.
+            - configure-behat:
+                type: script
+                script:
+                  - set -x
+                  - cd ./docroot
+                  # Install Lightning.
+                  - ../vendor/bin/drush site-install lightning --db-url=mysql://root:root@127.0.0.1/drupal --yes
+                  # Lightning Dev will automatically scan for feature files in
+                  # enabled extensions and generate a behat configuration file based
+                  # on the results.
+                  - ../vendor/bin/drush pm-enable lightning_dev --yes
+    
+            # Execute all testing and validation tasks.
+            - run-tests:
+                type: script
+                script:
+                  - set -x
+                  - ../vendor/bin/drush runserver --default-server=builtin 8080 &>/dev/null &
+                  - ../vendor/bin/phantomjs --webdriver=4444 > /dev/null &
+                  - sleep 10
+                  # Run two specific Lightning tests:
+                  # - Panelizer is enabled for landing pages (1e244c89)
+                  # - Uploading an image to be ignored by the media library (b23435a5)
+                  - ../vendor/bin/behat --config ./sites/default/files/behat.yml --tags=1e244c89,b23435a5
+    
+            # Generate artifact.
+            - build-artifact:
+                type: script
+                script:
+                  - set -x
+                  - source ${BLT_DIR}/scripts/pipelines/build_artifact
+    ```
+    
+   _Describe each section_
+1. Push! (or don't - not sure)
     
 <sup>Note1</sup>When I was setting up this demo, blt and blt-project wer broken
 with a few different problems. Notably that BLT was forcing an outdated version
