@@ -13,4 +13,4 @@ _As a senior developer I want to review and merge contributions._
 1. Pipelines updates the pipelines-build-master branch with a new artifact
 1. That branch is checked out on test
 1. Test manually again. Given no issues...
-1. Tag pipelines-build-master branch and deploy to prod
+1. Tag pipelines-build-master branch and deploy to prod3

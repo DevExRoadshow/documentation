@@ -15,12 +15,29 @@ The following steps will be done live.
 1. Find an feature request issue in GitHub that you want to contribute.  
 1. Create a feature branch.
 1. Do whatever is necessary to to add the feature.
-    1. Add a new media reference field (video) to the Landing Page content type
-    1. Adjust the display settings of the two column layout to display the video
-1. Show that new feature has been implemented
-    1. Create a new landing page
-    1. Add a video using the media browsed. Good vid Url: `https://vimeo.com/62005744`
-1. Add a test of the feature
-1. Export the configuration `drush config-export`
-1. Commit all changes and push to remote
-1. Open a PR
+    1. Require the new module `composer require drupal/paragraphs`
+    1. Enable the module `drush @speedrun.local en -y paragraphs`
+    1. Export the config `drush @soeedrun.local csex -y`
+    1. Add a test
+    
+    ```
+    @api @paragraphs
+    Feature: Test paragraphs
+    
+      Scenario: Make sure paragraphs is enabled
+        Given I am logged in as a user with the administrator role
+        When I am on "/admin/reports/updates"
+        Then I should see "Paragraphs"
+    ```
+    
+    1. Run the test locally:
+        1. SSH in to the VM: `drush @speedrun.local ssh`
+        1. Execute behat with the local config and the paragraphs tag: `../vendor/bin/behat --config ../behat.local.yml --tags=paragraphs`
+        1. Exit out of the VM
+    
+    1. Add the paragraphs tag to the pipelines buildsteps behat command
+    1. Commit everything to the feature branch and push to GH
+    1. Technically, the contributor would open a PR at this point which would
+       create the CDE on the projects main repo. But since we're working from
+       the main repo already, Cloud CD will automatically create a feature
+       branch CDE once the Pipeline job passes.

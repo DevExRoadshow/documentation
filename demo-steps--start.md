@@ -7,7 +7,7 @@ _As team lead I want to start a new project_
 1. Edit ./blt/project.yml
 1. Change:
     1. `machine_name` - should == your cloud site name and should automatically
-    be set by BLT during composer install to dir name.
+        be set by BLT during composer install to dir name.
     1. `prefix` - used for git commit message validation.
     1. `human_name`
     1. Nothing else. The git remotes array is only used for blt:deploy and we
