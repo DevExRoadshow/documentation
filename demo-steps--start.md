@@ -1,8 +1,7 @@
 # Start a new project
 _As team lead I want to start a new project_
 
-1. Create the codebase. Run `composer create-project devexroadshow/project-starter --stability=dev --no-interaction filenes` <sup>Note1</sup>  
-   _(3m 40s)_
+1. Create the codebase. Run `composer create-project acquia/blt-project CLOUDSUB_SITEGROUPNAME` <sup>Note1</sup>  
 1. Switch into project directory
 1. Edit ./blt/project.yml
 1. Change:
@@ -61,52 +60,81 @@ _As team lead I want to start a new project_
             - setup:
                 type: script
                 script:
-                  - set -x
-                  - composer self-update
-                  - composer validate --no-check-all --ansi
+                  - cd $BUILD_DIR
                   - composer install
                   - source ${BLT_DIR}/scripts/pipelines/setup_environment
                   - source ${BLT_DIR}/scripts/pipelines/setup_project
                   - composer install-phantomjs
     
-            # Install Lightning and setup behat config.
-            - configure-behat:
+            # Install Lightning and copy prod database.
+            - install:
                 type: script
                 script:
-                  - set -x
-                  - cd ./docroot
-                  # Install Lightning.
-                  - ../vendor/bin/drush site-install lightning --db-url=mysql://root:root@127.0.0.1/drupal --yes
-                  # Lightning Dev will automatically scan for feature files in
-                  # enabled extensions and generate a behat configuration file based
-                  # on the results.
-                  - ../vendor/bin/drush pm-enable lightning_dev --yes
+                  - cd $BUILD_DIR/docroot
+    
+                  # Install Lightning from scratch first so our settings file gets
+                  # the correct DB connection details for the test env.
+                  - /usr/bin/env PHP_OPTIONS="-d sendmail_path=`which true`" ../vendor/bin/drush site-install lightning --db-url=mysql://root:root@127.0.0.1/drupal --yes
+    
+                  # Then copy the prod database over.
+                  - ../vendor/bin/drush --alias-path=../drush sql-sync @speedrun.prod default --yes
+                  - ../vendor/bin/drush updatedb --yes
+                  - ../vendor/bin/drush cache-rebuild
+    
+                  # Run a config import to get any new config changes from code.
+                  - ../vendor/bin/drush config-import --yes --config=../config/default
+    
+            # Generate behat config
+            - configure:
+                type: script
+                script:
+                  - cd $BUILD_DIR
+                  - blt behat-generate
     
             # Execute all testing and validation tasks.
             - run-tests:
                 type: script
                 script:
-                  - set -x
+                  - cd $BUILD_DIR/docroot
                   - ../vendor/bin/drush runserver --default-server=builtin 8080 &>/dev/null &
                   - ../vendor/bin/phantomjs --webdriver=4444 > /dev/null &
                   - sleep 10
-                  # Run two specific Lightning tests:
+                  # Run a specific Lightning test:
                   # - Panelizer is enabled for landing pages (1e244c89)
-                  # - Uploading an image to be ignored by the media library (b23435a5)
-                  - ../vendor/bin/behat --config ./sites/default/files/behat.yml --tags=1e244c89,b23435a5
+                  - ../vendor/bin/behat --config ./sites/default/files/behat.yml --tags=1e244c89
     
             # Generate artifact.
             - build-artifact:
                 type: script
                 script:
-                  - set -x
                   - source ${BLT_DIR}/scripts/pipelines/build_artifact
+    
+            # Deploy the build artifact to a Cloud on-demand environment.
+            - deploy:
+                script:
+                  - pipelines-deploy
+    
+      # When a GitHub pull request is merged, this deletes the corresponding ODE.
+      pr-merged:
+        steps:
+            - deploy:
+                script:
+                  - pipelines-deploy
+    
+      # When a GitHub pull request is closed, this deletes the corresponding ODE.
+      pr-closed:
+        steps:
+            - deploy:
+                script:
+                  - pipelines-deploy
+    ssh-keys:
+      drush-key:
+        secure: YOUR DRUSH KEY 
     ```
     
    _Describe each section_
 1. Push! (or don't - not sure)
     
-<sup>Note1</sup>When I was setting up this demo, blt and blt-project wer broken
-with a few different problems. Notably that BLT was forcing an outdated version
-of Lightning and BLT Project was failing with a patch problem. Normally you
-would use acquia/blt-project as a starter.
+<sup>Note1</sup>You'll probably already have the codebase built and setup for
+the sub that you'll be using. So you'll probably want to use something else for
+the name here.
