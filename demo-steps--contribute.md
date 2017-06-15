@@ -8,7 +8,7 @@ playing the role of both developer (feature contributor) and senior developer
 (feature reviewer/committer) on the same machine.
 1. Clone the GitHub repo
 1. Boot the VM
-1. Install the app locally. Run `blt:local:setup`
+1. Install the app locally. Run `blt local:setup`
 1. Synchronize your codebase with the test environment. Run `blt local:refresh`
 
 The following steps will be done live.
